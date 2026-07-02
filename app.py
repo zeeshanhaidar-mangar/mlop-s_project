@@ -1,66 +1,23 @@
-import os
 import joblib
 import numpy as np
-from flask import Flask, request, jsonify, render_template
+import streamlit as st
 
-app = Flask(__name__, template_folder="templates")
+model = joblib.load('models/RandomForest.pkl')
+scaler = joblib.load('models/scaler.pkl')
+label_encoder = joblib.load('models/label_encoder.pkl')
 
-# -----------------------------
-# Load models
-# -----------------------------
-MODEL_PATH = os.path.join('models', 'RandomForest.pkl')
-SCALER_PATH = os.path.join('models', 'scaler.pkl')
-ENCODER_PATH = os.path.join('models', 'label_encoder.pkl')
+st.title("Iris Classifier 🌸")
 
-model = joblib.load(MODEL_PATH)
-scaler = joblib.load(SCALER_PATH)
-label_encoder = joblib.load(ENCODER_PATH)
+sl = st.number_input("Sepal Length")
+sw = st.number_input("Sepal Width")
+pl = st.number_input("Petal Length")
+pw = st.number_input("Petal Width")
 
-print("Models loaded successfully.")
+if st.button("Predict"):
+    x = np.array([[sl, sw, pl, pw]])
+    x_scaled = scaler.transform(x)
 
-# -----------------------------
-# Routes
-# -----------------------------
-@app.route('/')
-def home():
-    return render_template('index.html')
+    pred = model.predict(x_scaled)[0]
+    label = label_encoder.inverse_transform([pred])[0]
 
-
-@app.route('/predict', methods=['POST'])
-def predict():
-    try:
-        data = request.get_json()
-
-        features = np.array([[
-            float(data['sepal_length']),
-            float(data['sepal_width']),
-            float(data['petal_length']),
-            float(data['petal_width'])
-        ]])
-
-        # Scale
-        features_scaled = scaler.transform(features)
-
-        # Predict
-        pred = model.predict(features_scaled)[0]
-        label = label_encoder.inverse_transform([pred])[0]
-
-        return jsonify({
-            "success": True,
-            "prediction": label
-        })
-
-    except Exception as e:
-        return jsonify({
-            "success": False,
-            "error": str(e)
-        })
-
-
-# -----------------------------
-# IMPORTANT: only run locally
-# -----------------------------
-if __name__ == "__main__":
-    # Safe for Render / local only
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+    st.success(f"Prediction: {label}")
